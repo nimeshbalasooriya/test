@@ -19,7 +19,7 @@
             font-family: 'Space Grotesk', sans-serif;
             overflow: hidden; 
             background-color: #020617;
-            cursor: none; /* පද්ධතියේ cursor එක සඟවයි */
+            cursor: none; /* System cursor lapva */
         }
 
         /* Virtual Cursor */
@@ -33,7 +33,7 @@
             z-index: 10000;
             transition: transform 0.1s ease-out, background-color 0.2s;
             box-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
-            display: none; /* අත හඳුනාගන්නා තුරු සඟවයි */
+            display: none; /* Hand detect hoiparyant lapva */
         }
 
         .cursor-active {
@@ -120,7 +120,7 @@
 <body class="text-white">
 
     <div id="custom-cursor"></div>
-    <div class="gesture-indicator" id="gesture-msg">කැමරාවට අවසර දී අත පෙන්වන්න...</div>
+    <div class="gesture-indicator" id="gesture-msg">Camera permission dya ani hath dakhva...</div>
     
     <video id="webcam" class="hidden" autoplay playsinline></video>
     <canvas id="gesture-preview"></canvas>
@@ -133,7 +133,7 @@
                 <h2 class="text-cyan-400 text-sm font-bold tracking-[0.5em] mb-4 uppercase animate-pulse">Wave to Interact</h2>
                 <h1 class="text-7xl font-bold mb-8 tracking-tighter">NHB <br><span class="text-cyan-400">GESTURE AI</span></h1>
                 <p class="text-slate-400 max-w-lg mx-auto mb-10 text-lg">
-                    මවුසය අවශ්‍ය නැත. ඇඟිලි දෙකක් ස්පර්ශ කර (Pinch) බටන් ක්ලික් කරන්න.
+                    Mouse chi garaj nahi. Botanchya halchalini (Pinch) button click kara.
                 </p>
                 <button class="pinch-target border border-cyan-500/30 bg-cyan-500/5 px-10 py-4 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-cyan-500/20" onclick="movePage(1)">
                     Explore Technology
@@ -147,7 +147,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl items-center">
                 <div>
                     <h1 class="text-5xl font-bold mb-6">Touchless <br><span class="text-cyan-400">Innovation</span></h1>
-                    <p class="text-slate-400 mb-8">අනාගතයේ වෙබ් අඩවි හැසිරවීමේ නවතම අත්දැකීම දැන් ඔබ සතුයි.</p>
+                    <p class="text-slate-400 mb-8">Bhavishyatil website vaparnyacha navin anubhav ata tumchyajaval ahe.</p>
                     <div class="flex gap-4">
                         <button class="pinch-target bg-cyan-500 text-slate-950 px-8 py-3 rounded-xl font-bold" onclick="movePage(0)">Back</button>
                         <button class="pinch-target bg-white/10 px-8 py-3 rounded-xl font-bold border border-white/10" onclick="movePage(2)">Contact</button>
@@ -176,7 +176,7 @@
         <section class="section-panel bg-black">
             <div class="text-center">
                 <h1 class="text-6xl font-bold mb-4">READY TO <span class="text-cyan-400">UPGRADE?</span></h1>
-                <p class="text-slate-500 mb-12">Contact us to integrate gesture AI into your business.</p>
+                <p class="text-slate-500 mb-12">Tumchya business madhye gesture AI integrate karnyasaathi amchyashi sampark kara.</p>
                 <div class="flex flex-col gap-6 items-center">
                     <div class="pinch-target p-8 bg-slate-900 border border-cyan-500/20 rounded-3xl w-80 text-center">
                         <p class="text-xs text-cyan-400 mb-2 uppercase tracking-widest">Direct Line</p>
@@ -189,6 +189,7 @@
     </div>
 
     <script>
+        // Lucide icons initialize kara
         lucide.createIcons();
 
         const videoElement = document.getElementById('webcam');
@@ -214,16 +215,32 @@
             
             lastClickTime = now;
             const element = document.elementFromPoint(x, y);
-            if (element && element.closest('.pinch-target')) {
+            if (element) {
                 const target = element.closest('.pinch-target');
-                target.click();
-                msg.innerText = "Clicked!";
-                cursor.classList.add('bg-white');
-                setTimeout(() => cursor.classList.remove('bg-white'), 200);
+                if (target) {
+                    target.click();
+                    msg.innerText = "Clicked!";
+                    cursor.classList.add('bg-white');
+                    setTimeout(() => cursor.classList.remove('bg-white'), 200);
+                }
             }
         }
 
-        function onResults(results) {
+        // MediaPipe setup ani dhavnyachi process
+        const hands = new Hands({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
+        });
+
+        hands.onResults((results) => {
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
@@ -232,25 +249,22 @@
                 const landmarks = results.multiHandLandmarks[0];
                 cursor.style.display = 'block';
                 
-                // Index Finger Tip (8) for Cursor
+                // Index Finger Tip (8)
                 const indexFinger = landmarks[8];
                 const thumbTip = landmarks[4];
 
-                // Scaling and Smoothing
                 const screenX = (1 - indexFinger.x) * window.innerWidth;
                 const screenY = indexFinger.y * window.innerHeight;
                 
                 cursor.style.left = `${screenX}px`;
                 cursor.style.top = `${screenY}px`;
 
-                // Calculate Distance for Pinch (Thumb Tip to Index Tip)
                 const distance = Math.sqrt(
                     Math.pow(indexFinger.x - thumbTip.x, 2) + 
                     Math.pow(indexFinger.y - thumbTip.y, 2)
                 );
 
-                // Pinch threshold
-                if (distance < 0.04) {
+                if (distance < 0.05) { // Pinch threshold
                     if (!isPinching) {
                         isPinching = true;
                         cursor.classList.add('cursor-active');
@@ -263,31 +277,19 @@
 
                 msg.innerText = "Hand Detected. Pinch to select.";
 
-                // Drawing skeleton
-                if (window.drawConnectors && window.drawLandmarks) {
-                    window.drawConnectors(canvasCtx, landmarks, window.HAND_CONNECTIONS, {color: '#22d3ee', lineWidth: 2});
-                    window.drawLandmarks(canvasCtx, landmarks, {color: '#ffffff', lineWidth: 1, radius: 2});
+                // Skeleton drawing
+                if (typeof drawConnectors !== 'undefined' && typeof drawLandmarks !== 'undefined') {
+                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#22d3ee', lineWidth: 2});
+                    drawLandmarks(canvasCtx, landmarks, {color: '#ffffff', lineWidth: 1, radius: 2});
                 }
             } else {
                 cursor.style.display = 'none';
-                msg.innerText = "කැමරාවට අත පෙන්වන්න...";
+                msg.innerText = "Camera samor hath dakhva...";
             }
             canvasCtx.restore();
-        }
-
-        const hands = new Hands({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
 
-        hands.setOptions({
-            maxNumHands: 1,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.6,
-            minTrackingConfidence: 0.6
-        });
-
-        hands.onResults(onResults);
-
+        // Camera initialize kara
         const camera = new Camera(videoElement, {
             onFrame: async () => {
                 await hands.send({image: videoElement});
@@ -295,11 +297,13 @@
             width: 640,
             height: 480
         });
+        
         camera.start().catch(err => {
-            msg.innerText = "කැමරාව ක්‍රියා නොකරයි. Permission ලබා දී ඇත්දැයි බලන්න.";
+            console.error("Camera Error: ", err);
+            msg.innerText = "Camera error! Permission check kara.";
         });
 
-        // Block standard navigation to force gestures
+        // Navigation block kara
         window.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
         window.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
     </script>
