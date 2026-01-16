@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NHB GESTURE-AI | Future Navigation</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap');
+        
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            overflow: hidden; /* මවුසයෙන් scroll කිරීම තහනම් කර ඇත */
+            background-color: #020617;
+        }
+
+        /* Virtual Cursor */
+        #custom-cursor {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #22d3ee;
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            transition: transform 0.1s ease-out;
+            box-shadow: 0 0 15px #22d3ee;
+        }
+
+        .cursor-active {
+            transform: scale(0.6);
+            background: #22d3ee;
+        }
+
+        /* Parallax Container */
+        #content-wrapper {
+            display: flex;
+            width: 300vw; /* පිටු 3ක් පසෙකින් පසෙක */
+            transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .section-panel {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        /* Glow effects */
+        .glow-box {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(34,211,238,0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        #gesture-preview {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 180px;
+            height: 135px;
+            background: #000;
+            border: 2px solid #1e293b;
+            border-radius: 15px;
+            z-index: 1000;
+            overflow: hidden;
+            transform: scaleX(-1);
+        }
+
+        .gesture-indicator {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #22d3ee;
+            font-size: 14px;
+            z-index: 2000;
+        }
+
+        .pinch-target {
+            transition: all 0.3s;
+        }
+
+        .pinch-target:hover {
+            transform: scale(1.1);
+            background: rgba(34, 211, 238, 0.2);
+            border-color: #22d3ee;
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <div id="custom-cursor"></div>
+    <div class="gesture-indicator" id="gesture-msg">අත ඔසවා පාලනය ආරම්භ කරන්න...</div>
+    
+    <video id="webcam" class="hidden" autoplay playsinline></video>
+    <canvas id="gesture-preview"></canvas>
+
+    <!-- Main Navigation Content -->
+    <div id="content-wrapper">
+        
+        <!-- Section 1: Introduction -->
+        <section class="section-panel relative bg-slate-950">
+            <div class="glow-box top-1/4 left-1/4"></div>
+            <div class="text-center z-10">
+                <h2 class="text-cyan-400 text-sm font-bold tracking-[0.5em] mb-4 uppercase">Wave to Interact</h2>
+                <h1 class="text-7xl font-bold mb-8 tracking-tighter">FUTURE <br><span class="text-cyan-400">INTERFACE</span></h1>
+                <p class="text-slate-400 max-w-lg mx-auto mb-10 text-lg">
+                    මෙය සම්පූර්ණයෙන්ම අත් චලනයන් මගින් පාලනය වේ. පසෙකට යාමට අත පසෙකට චලනය කරන්න.
+                </p>
+                <button class="pinch-target border border-white/20 px-10 py-4 rounded-full font-bold uppercase tracking-widest text-xs hover:border-cyan-400" onclick="movePage(1)">
+                    Next Concept (Pinch to Click)
+                </button>
+            </div>
+        </section>
+
+        <!-- Section 2: AI Capabilities -->
+        <section class="section-panel relative bg-slate-900">
+            <div class="glow-box bottom-1/4 right-1/4"></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl items-center">
+                <div>
+                    <h1 class="text-5xl font-bold mb-6">Sensing <br><span class="text-cyan-400">Your Needs</span></h1>
+                    <p class="text-slate-400 mb-8">අපගේ AI පද්ධති ඔබේ ඇඟිලි තුඩුවල ඇති චලනයන් හඳුනාගෙන අවශ්‍යතා ඉටුකරයි.</p>
+                    <div class="flex gap-4">
+                        <button class="pinch-target bg-cyan-500 text-slate-950 px-8 py-3 rounded-xl font-bold" onclick="movePage(0)">Back</button>
+                        <button class="pinch-target bg-white/10 px-8 py-3 rounded-xl font-bold border border-white/10" onclick="movePage(2)">Contact</button>
+                    </div>
+                </div>
+                <div class="bg-slate-800/50 p-8 rounded-3xl border border-white/5 backdrop-blur-xl">
+                    <div class="space-y-4">
+                        <div class="h-2 w-1/2 bg-cyan-400/20 rounded"></div>
+                        <div class="h-2 w-full bg-slate-700 rounded"></div>
+                        <div class="h-2 w-3/4 bg-slate-700 rounded"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Contact -->
+        <section class="section-panel bg-black">
+            <div class="text-center">
+                <h1 class="text-6xl font-bold mb-4">LET'S <span class="text-cyan-400">BUILD</span></h1>
+                <p class="text-slate-500 mb-12">No mouse required. Just pure innovation.</p>
+                <div class="flex flex-col gap-6 items-center">
+                    <div class="pinch-target p-6 bg-white/5 border border-white/10 rounded-2xl w-80 text-center">
+                        <p class="text-xs text-cyan-400 mb-1">EMAIL US</p>
+                        <p class="text-xl">hello@nhblk.com</p>
+                    </div>
+                    <button class="pinch-target text-slate-400 hover:text-white" onclick="movePage(0)">RESTART</button>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('gesture-preview');
+        const canvasCtx = canvasElement.getContext('2d');
+        const cursor = document.getElementById('custom-cursor');
+        const wrapper = document.getElementById('content-wrapper');
+        const msg = document.getElementById('gesture-msg');
+
+        let currentSection = 0;
+        let isPinching = false;
+        let lastClickTime = 0;
+
+        // Navigation Function
+        function movePage(index) {
+            currentSection = index;
+            wrapper.style.transform = `translateX(-${index * 100}vw)`;
+            msg.innerText = `Switched to Section ${index + 1}`;
+        }
+
+        // Handle Virtual Clicks
+        function triggerVirtualClick(x, y) {
+            const now = Date.now();
+            if (now - lastClickTime < 1000) return; // Prevent double clicks
+            
+            lastClickTime = now;
+            const element = document.elementFromPoint(x, y);
+            if (element && element.classList.contains('pinch-target')) {
+                element.click();
+                msg.innerText = "Action Executed!";
+                cursor.classList.add('bg-white');
+                setTimeout(() => cursor.classList.remove('bg-white'), 200);
+            }
+        }
+
+        function onResults(results) {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+            
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // Track Index Finger (Landmark 8)
+                const indexFinger = landmarks[8];
+                const thumbTip = landmarks[4];
+
+                // Smooth Cursor Movement
+                const screenX = (1 - indexFinger.x) * window.innerWidth;
+                const screenY = indexFinger.y * window.innerHeight;
+                
+                cursor.style.left = `${screenX}px`;
+                cursor.style.top = `${screenY}px`;
+
+                // Pinch Detection (Clicking)
+                const distance = Math.sqrt(
+                    Math.pow(indexFinger.x - thumbTip.x, 2) + 
+                    Math.pow(indexFinger.y - thumbTip.y, 2)
+                );
+
+                if (distance < 0.05) {
+                    if (!isPinching) {
+                        isPinching = true;
+                        cursor.classList.add('cursor-active');
+                        triggerVirtualClick(screenX, screenY);
+                    }
+                } else {
+                    isPinching = false;
+                    cursor.classList.remove('cursor-active');
+                }
+
+                // Horizontal Navigation (Swipe gesture based on wrist/palm position)
+                // If hand moves to extremes, auto-scroll could be triggered, but we use pinch buttons for precision here
+                
+                msg.innerText = "Hand Active: Move to target and PINCH to click";
+
+                // Draw skeleton on preview
+                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#22d3ee', lineWidth: 2});
+                drawLandmarks(canvasCtx, landmarks, {color: '#ffffff', lineWidth: 1, radius: 2});
+            } else {
+                msg.innerText = "අත පෙන්වන්න (Show your hand to start)";
+            }
+            canvasCtx.restore();
+        }
+
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7
+        });
+
+        hands.onResults(onResults);
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({image: videoElement});
+            },
+            width: 640,
+            height: 480
+        });
+        camera.start();
+
+        // Prevent standard interaction
+        window.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+        window.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+    </script>
+</body>
+</html>
