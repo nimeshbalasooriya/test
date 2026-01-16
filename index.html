@@ -3,317 +3,250 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NHB GESTURE-AI | Future Navigation</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- MediaPipe Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-
+    <title>3D Gesture Particle System</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap');
-        
-        body {
-            font-family: 'Space Grotesk', sans-serif;
-            overflow: hidden; 
-            background-color: #020617;
-            cursor: none; /* System cursor lapva */
-        }
-
-        /* Virtual Cursor */
-        #custom-cursor {
-            width: 30px;
-            height: 30px;
-            border: 2px solid #22d3ee;
-            border-radius: 50%;
-            position: fixed;
-            pointer-events: none;
-            z-index: 10000;
-            transition: transform 0.15s ease-out; /* Smooth transition */
-            box-shadow: 0 0 20px rgba(34, 211, 238, 0.5);
-            display: none; 
-        }
-
-        .cursor-active {
-            transform: scale(0.6);
-            background: #22d3ee;
-            box-shadow: 0 0 30px #22d3ee;
-        }
-
-        /* Parallax Container */
-        #content-wrapper {
-            display: flex;
-            width: 300vw;
-            transition: transform 0.8s cubic-bezier(0.23, 1, 0.32, 1);
-        }
-
-        .section-panel {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-        }
-
-        /* Glow effects */
-        .glow-box {
-            position: absolute;
-            width: 400px;
-            height: 400px;
-            background: radial-gradient(circle, rgba(34,211,238,0.15) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        /* Responsive Camera Preview */
-        #gesture-preview-container {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            width: 120px; /* Chota size mobile sathi */
-            height: 90px;
-            z-index: 1000;
-        }
-
-        @media (min-width: 768px) {
-            #gesture-preview-container {
-                width: 200px;
-                height: 150px;
-                bottom: 20px;
-                right: 20px;
-            }
-        }
-
-        #gesture-preview {
-            width: 100%;
-            height: 100%;
-            background: #000;
-            border: 2px solid #1e293b;
-            border-radius: 12px;
-            transform: scaleX(-1);
-            object-fit: cover;
-        }
-
-        .gesture-indicator {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(10px);
-            padding: 10px 16px;
-            border-radius: 50px;
-            border: 1px solid rgba(34, 211, 238, 0.3);
-            color: #22d3ee;
-            font-size: 12px;
-            z-index: 2000;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            text-align: center;
-            width: 80%;
-            max-width: 300px;
-        }
-
-        .pinch-target {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            touch-action: none;
-        }
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
+        #ui { position: absolute; top: 20px; left: 20px; color: white; pointer-events: none; z-index: 10; }
+        .hint { font-size: 0.8em; color: #888; margin-top: 5px; }
+        video { position: absolute; bottom: 10px; right: 10px; width: 160px; height: 120px; border: 1px solid #444; transform: scaleX(-1); }
+        #canvas-container { width: 100vw; height: 100vh; }
     </style>
 </head>
-<body class="text-white">
-
-    <div id="custom-cursor"></div>
-    <div class="gesture-indicator" id="gesture-msg">Camera permission dya ani hath dakhva...</div>
-    
-    <video id="webcam" class="hidden" autoplay playsinline></video>
-    <div id="gesture-preview-container">
-        <canvas id="gesture-preview"></canvas>
+<body>
+    <div id="ui">
+        <h2>Everything About Technical</h2>
+        <div id="status">Loading AI Models...</div>
+        <div class="hint">• <b>1 Finger:</b> Saturn | <b>2 Fingers:</b> Heart | <b>3 Fingers:</b> Flower | <b>4+ Fingers:</b> Fireworks</div>
+        <div class="hint">• <b>Pinch (Thumb+Index):</b> Expand/Contract</div>
+        <div class="hint">• <b>Move Hand:</b> Change Color & Rotation</div>
     </div>
+    <video id="webcam" autoplay playsinline></video>
 
-    <div id="content-wrapper">
-        <!-- Section 1 -->
-        <section class="section-panel relative bg-slate-950">
-            <div class="glow-box top-1/4 left-1/4"></div>
-            <div class="text-center z-10 px-4">
-                <h2 class="text-cyan-400 text-[10px] md:text-sm font-bold tracking-[0.3em] md:tracking-[0.5em] mb-4 uppercase animate-pulse">Wave to Interact</h2>
-                <h1 class="text-4xl md:text-7xl font-bold mb-6 tracking-tighter">NHB <br><span class="text-cyan-400">GESTURE AI</span></h1>
-                <p class="text-slate-400 max-w-lg mx-auto mb-8 text-sm md:text-lg">
-                    Mouse chi garaj nahi. Accuracy vadhavli ahe. Pinch (👌) karun select kara.
-                </p>
-                <button class="pinch-target border border-cyan-500/30 bg-cyan-500/5 px-6 md:px-10 py-3 md:py-4 rounded-full font-bold uppercase tracking-widest text-[10px] md:text-xs hover:bg-cyan-500/20" onclick="movePage(1)">
-                    Explore Technology
-                </button>
-            </div>
-        </section>
-
-        <!-- Section 2 -->
-        <section class="section-panel relative bg-slate-900">
-            <div class="glow-box bottom-1/4 right-1/4"></div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 max-w-5xl items-center px-4">
-                <div>
-                    <h1 class="text-3xl md:text-5xl font-bold mb-4 md:mb-6">Touchless <br><span class="text-cyan-400">Innovation</span></h1>
-                    <p class="text-slate-400 mb-6 text-sm md:text-base">Hathacha cursor smooth kela ahe, jyamule control karna sopa hoil.</p>
-                    <div class="flex gap-4">
-                        <button class="pinch-target bg-cyan-500 text-slate-950 px-6 py-2 rounded-xl font-bold text-sm" onclick="movePage(0)">Back</button>
-                        <button class="pinch-target bg-white/10 px-6 py-2 rounded-xl font-bold border border-white/10 text-sm" onclick="movePage(2)">Contact</button>
-                    </div>
-                </div>
-                <div class="bg-slate-800/80 p-6 md:p-10 rounded-3xl border border-cyan-500/20 backdrop-blur-xl hidden md:block">
-                    <div class="space-y-6">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 bg-cyan-500/20 rounded-full flex items-center justify-center">
-                                <i data-lucide="eye" class="text-cyan-400 w-5 h-5"></i>
-                            </div>
-                            <span class="font-bold">Improved Accuracy</span>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 bg-cyan-500/20 rounded-full flex items-center justify-center">
-                                <i data-lucide="zap" class="text-cyan-400 w-5 h-5"></i>
-                            </div>
-                            <span class="font-bold">Low Latency</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Section 3 -->
-        <section class="section-panel bg-black">
-            <div class="text-center px-4">
-                <h1 class="text-4xl md:text-6xl font-bold mb-4">READY TO <span class="text-cyan-400">UPGRADE?</span></h1>
-                <p class="text-slate-500 mb-8 text-sm md:text-base">Pinch karun restart kara.</p>
-                <div class="flex flex-col gap-4 items-center">
-                    <div class="pinch-target p-6 bg-slate-900 border border-cyan-500/20 rounded-3xl w-64 md:w-80 text-center">
-                        <p class="text-[10px] text-cyan-400 mb-1 uppercase tracking-widest">Direct Line</p>
-                        <p class="text-lg md:text-2xl font-bold">hello@nhblk.com</p>
-                    </div>
-                    <button class="pinch-target text-slate-500 hover:text-white transition-colors text-sm" onclick="movePage(0)">RESTART EXPERIENCE</button>
-                </div>
-            </div>
-        </section>
-    </div>
+    <!-- Load Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 
     <script>
-        lucide.createIcons();
+        const video = document.getElementById('webcam');
+        const statusText = document.getElementById('status');
+        const PARTICLE_COUNT = 15000;
+        let scene, camera, renderer, particles, material;
+        let currentShapeIdx = 0;
+        let targetShapeIdx = 0;
+        let transitionProgress = 1.0;
 
-        const videoElement = document.getElementById('webcam');
-        const canvasElement = document.getElementById('gesture-preview');
-        const canvasCtx = canvasElement.getContext('2d');
-        const cursor = document.getElementById('custom-cursor');
-        const wrapper = document.getElementById('content-wrapper');
-        const msg = document.getElementById('gesture-msg');
+        // --- 1. Setup Three.js ---
+        function initThree() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
 
-        let currentSection = 0;
-        let isPinching = false;
-        let lastClickTime = 0;
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
 
-        // Smoothing Variables
-        let lerpX = 0;
-        let lerpY = 0;
-        const smoothing = 0.2; // Kami mhanje adhik smooth (0 to 1)
-
-        function movePage(index) {
-            currentSection = index;
-            wrapper.style.transform = `translateX(-${index * 100}vw)`;
-            msg.innerText = `Section ${index + 1} var gelo.`;
-        }
-
-        function triggerVirtualClick(x, y) {
-            const now = Date.now();
-            if (now - lastClickTime < 1000) return; // Debounce vadhavla sathi sensitivity kami karnyasaathi
+            const geometry = new THREE.BufferGeometry();
+            const basePositions = new Float32Array(PARTICLE_COUNT * 3);
             
-            lastClickTime = now;
-            const element = document.elementFromPoint(x, y);
-            if (element) {
-                const target = element.closest('.pinch-target');
-                if (target) {
-                    target.click();
-                    msg.innerText = "Select kela!";
-                    cursor.style.backgroundColor = 'white';
-                    setTimeout(() => cursor.style.backgroundColor = 'transparent', 200);
-                }
-            }
+            // Define Shape Attributes
+            geometry.setAttribute('position', new THREE.BufferAttribute(basePositions, 3));
+            geometry.setAttribute('targetPos', new THREE.BufferAttribute(new Float32Array(PARTICLE_COUNT * 3), 3));
+            geometry.setAttribute('colorAttr', new THREE.BufferAttribute(new Float32Array(PARTICLE_COUNT * 3), 3));
+
+            // Generate initial shapes
+            generateShapeData(geometry);
+
+            material = new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0 },
+                    uProgress: { value: 1.0 },
+                    uColor: { value: new THREE.Color(0x00ffcc) },
+                    uExpansion: { value: 1.0 }
+                },
+                vertexShader: `
+                    attribute vec3 targetPos;
+                    uniform float uProgress;
+                    uniform float uTime;
+                    uniform float uExpansion;
+                    varying vec3 vColor;
+                    void main() {
+                        // Morph between current and target
+                        vec3 pos = mix(position, targetPos, uProgress);
+                        
+                        // Apply expansion
+                        pos *= uExpansion;
+
+                        // Add subtle noise/float
+                        pos.x += sin(uTime + pos.z) * 0.1;
+                        pos.y += cos(uTime + pos.x) * 0.1;
+
+                        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+                        gl_PointSize = (10.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                        vColor = vec3(0.5 + pos.x * 0.2, 0.5 + pos.y * 0.2, 0.8);
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 uColor;
+                    varying vec3 vColor;
+                    void main() {
+                        float dist = distance(gl_PointCoord, vec2(0.5));
+                        if (dist > 0.5) discard;
+                        gl_FragColor = vec4(uColor * vColor, 1.0 - (dist * 2.0));
+                    }
+                `,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+
+            window.addEventListener('resize', onWindowResize);
         }
 
+        // --- 2. Shape Generators ---
+        function generateShapeData(geo) {
+            const posArr = [];
+            
+            // Define formulas for 5 templates
+            const shapes = [
+                () => { // 0: Saturn
+                    const i = Math.random() * PARTICLE_COUNT;
+                    if (i < PARTICLE_COUNT * 0.4) { // Planet
+                        return new THREE.Vector3().setFromSphericalCoords(1.2, Math.random() * Math.PI, Math.random() * Math.PI * 2);
+                    } else { // Rings
+                        const r = 1.8 + Math.random() * 0.8;
+                        const a = Math.random() * Math.PI * 2;
+                        return new THREE.Vector3(Math.cos(a) * r, (Math.random() - 0.5) * 0.1, Math.sin(a) * r);
+                    }
+                },
+                () => { // 1: Heart
+                    const t = Math.random() * Math.PI * 2;
+                    const x = 16 * Math.pow(Math.sin(t), 3);
+                    const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+                    return new THREE.Vector3(x * 0.1, y * 0.1, (Math.random() - 0.5) * 0.5);
+                },
+                () => { // 2: Flower (Rose Curve)
+                    const t = Math.random() * Math.PI * 2;
+                    const k = 5;
+                    const r = Math.cos(k * t) * 2;
+                    return new THREE.Vector3(Math.cos(t) * r, Math.sin(t) * r, (Math.random() - 0.5) * 0.5);
+                },
+                () => { // 3: Fireworks (Sphere Burst)
+                    const r = Math.pow(Math.random(), 0.5) * 2.5;
+                    return new THREE.Vector3().setFromSphericalCoords(r, Math.random() * Math.PI, Math.random() * Math.PI * 2);
+                }
+            ];
+
+            const setAttribute = (attrName, shapeIdx) => {
+                const arr = geo.getAttribute(attrName).array;
+                for (let i = 0; i < PARTICLE_COUNT; i++) {
+                    const p = shapes[shapeIdx]();
+                    arr[i * 3] = p.x;
+                    arr[i * 3 + 1] = p.y;
+                    arr[i * 3 + 2] = p.z;
+                }
+                geo.getAttribute(attrName).needsUpdate = true;
+            };
+
+            // Initial load
+            setAttribute('position', 0);
+            setAttribute('targetPos', 0);
+            window.shapeLogic = setAttribute;
+        }
+
+        function triggerMorph(newIdx) {
+            if (newIdx === currentShapeIdx) return;
+            // Swap current to position attribute
+            const targetArr = particles.geometry.getAttribute('targetPos').array;
+            const posAttr = particles.geometry.getAttribute('position');
+            posAttr.array.set(targetArr);
+            posAttr.needsUpdate = true;
+
+            // Load new target
+            window.shapeLogic('targetPos', newIdx);
+            
+            currentShapeIdx = newIdx;
+            transitionProgress = 0;
+        }
+
+        // --- 3. Hand Gesture Logic ---
         const hands = new Hands({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
 
         hands.setOptions({
             maxNumHands: 1,
-            modelComplexity: 1, // 1 is faster for mobile
-            minDetectionConfidence: 0.7, // Accuracy vadhavnyasathi confidence vadhavla
-            minTrackingConfidence: 0.7
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
         });
 
         hands.onResults((results) => {
-            canvasCtx.save();
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-            
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                statusText.innerText = "Tracking Active";
                 const landmarks = results.multiHandLandmarks[0];
-                cursor.style.display = 'block';
-                
-                const indexFinger = landmarks[8];
-                const thumbTip = landmarks[4];
 
-                // Precise Mapping with smoothing
-                const targetX = (1 - indexFinger.x) * window.innerWidth;
-                const targetY = indexFinger.y * window.innerHeight;
+                // 1. Position & Color Control (Middle finger MCP)
+                const handX = (landmarks[9].x - 0.5) * 10;
+                const handY = -(landmarks[9].y - 0.5) * 10;
+                particles.rotation.y = handX * 0.5;
+                particles.rotation.x = handY * 0.5;
+                material.uniforms.uColor.value.setHSL((landmarks[9].x), 0.8, 0.5);
 
-                lerpX += (targetX - lerpX) * smoothing;
-                lerpY += (targetY - lerpY) * smoothing;
-                
-                cursor.style.left = `${lerpX}px`;
-                cursor.style.top = `${lerpY}px`;
+                // 2. Pinch Control (Expansion) - Distance between Thumb(4) and Index(8)
+                const dx = landmarks[4].x - landmarks[8].x;
+                const dy = landmarks[4].y - landmarks[8].y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                material.uniforms.uExpansion.value = THREE.MathUtils.lerp(material.uniforms.uExpansion.value, 1 + dist * 5, 0.1);
 
-                // Pinch detection logic (Threshold kami kela sensitivity sathi)
-                const distance = Math.sqrt(
-                    Math.pow(indexFinger.x - thumbTip.x, 2) + 
-                    Math.pow(indexFinger.y - thumbTip.y, 2)
-                );
+                // 3. Shape Switch (Finger Count)
+                const isRaised = (tip, pip) => landmarks[tip].y < landmarks[pip].y;
+                let raisedCount = 0;
+                if (isRaised(8, 6)) raisedCount++;  // Index
+                if (isRaised(12, 10)) raisedCount++; // Middle
+                if (isRaised(16, 14)) raisedCount++; // Ring
+                if (isRaised(20, 18)) raisedCount++; // Pinky
 
-                if (distance < 0.04) { // Sensitive gap kami kela (closer pinch needed)
-                    if (!isPinching) {
-                        isPinching = true;
-                        cursor.classList.add('cursor-active');
-                        triggerVirtualClick(lerpX, lerpY);
-                    }
-                } else if (distance > 0.06) { // Hysteresis to prevent flickering
-                    isPinching = false;
-                    cursor.classList.remove('cursor-active');
-                }
-
-                msg.innerText = "Hath sapadla. Pinch karun click kara.";
-
-                if (typeof drawConnectors !== 'undefined') {
-                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#22d3ee', lineWidth: 2});
-                }
+                if (raisedCount === 1) triggerMorph(0); // Saturn
+                else if (raisedCount === 2) triggerMorph(1); // Heart
+                else if (raisedCount === 3) triggerMorph(2); // Flower
+                else if (raisedCount >= 4) triggerMorph(3); // Fireworks
             } else {
-                cursor.style.display = 'none';
-                msg.innerText = "Camera samor hath dakhva...";
+                statusText.innerText = "Show your hand to the camera";
             }
-            canvasCtx.restore();
         });
 
-        const camera = new Camera(videoElement, {
-            onFrame: async () => {
-                await hands.send({image: videoElement});
-            },
-            width: 480, // Lower resolution for better mobile performance
-            height: 360
+        const cameraPipe = new Camera(video, {
+            onFrame: async () => { await hands.send({ image: video }); },
+            width: 640, height: 480
         });
-        
-        camera.start().catch(err => {
-            msg.innerText = "Camera error!";
-        });
+        cameraPipe.start();
 
-        window.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
-        window.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        // --- 4. Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            material.uniforms.uTime.value += 0.01;
+
+            if (transitionProgress < 1.0) {
+                transitionProgress += 0.02;
+                material.uniforms.uProgress.value = transitionProgress;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        initThree();
+        animate();
     </script>
 </body>
 </html>
